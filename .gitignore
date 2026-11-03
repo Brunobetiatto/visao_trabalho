@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Base convertida (regerada por src/prepare_dataset.py a partir da base original)
+datasets/
+
+# Pesos pré-treinados do COCO (baixados automaticamente pelo Ultralytics)
+yolo11n.pt
+
+# Saídas de treino: mantém só o modelo final e os resumos de métricas
+runs/**
+!runs/**/
+!runs/libras_yolo11n_b64/weights/best.pt
+!runs/*/results.csv
+!runs/*/args.yaml
+!runs/*_test/metrics.json
+!runs/kfold/kfold_summary.csv
+!runs/kfold/kfold_summary.json
+!runs/kfold/kfold_config.json
+!runs/kfold/fold*/fold_metrics.json
+*.cache
+
+# Sistema / IDE
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

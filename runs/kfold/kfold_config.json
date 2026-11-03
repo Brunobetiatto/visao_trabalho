@@ -1,0 +1,35 @@
+{
+  "data": "datasets/libras_yolo/data.yaml",
+  "k": 5,
+  "epochs": 30,
+  "batch": 64,
+  "imgsz": 416,
+  "block": 20,
+  "seed": 42,
+  "model": "yolo11n.pt",
+  "project": "runs/kfold",
+  "fold_sizes": [
+    777,
+    760,
+    770,
+    707,
+    746
+  ],
+  "hyperparams": {
+    "seed": 42,
+    "patience": 15,
+    "optimizer": "AdamW",
+    "lr0": 0.001,
+    "cos_lr": true,
+    "warmup_epochs": 3,
+    "mosaic": 1.0,
+    "close_mosaic": 10,
+    "scale": 0.5,
+    "translate": 0.1,
+    "degrees": 10,
+    "fliplr": 0.5,
+    "hsv_h": 0.015,
+    "hsv_s": 0.6,
+    "hsv_v": 0.4
+  }
+}

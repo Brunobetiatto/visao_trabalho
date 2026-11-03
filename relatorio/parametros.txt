@@ -1,0 +1,303 @@
+PARÂMETROS DO TRABALHO — Reconhecimento de letras de Libras com YOLO (fine-tuning)
+Gerado em: 2026-11-03 12:58
+
+======================================================================
+1. AMBIENTE
+======================================================================
+Sistema operacional : Windows-10-10.0.19045-SP0
+Python              : 3.11.9
+PyTorch             : 2.6.0+cu118 (CUDA 11.8)
+Ultralytics         : 8.3.130
+OpenCV              : 4.11.0
+GPU                 : NVIDIA GeForce RTX 3060
+
+======================================================================
+2. BASE DE DADOS E PRÉ-PROCESSAMENTO (src/prepare_dataset.py)
+======================================================================
+Base original       : C:/Users/Casa/Downloads/k4gs3bmx5k-3
+Formato original    : Pascal VOC (.xml), imagens 200x200 RGB, 1 mão por imagem
+Classes (15)        : A B C D E I L M N O R S U V W
+Conversão           : (xmin,ymin,xmax,ymax) px -> (classe, xc, yc, w, h) normalizados [0,1]
+Limpeza            : pares imagem/xml incompletos descartados; caixas recortadas aos limites
+                      da imagem; caixas < 2 px descartadas; rótulos padronizados em maiúsculas
+Arquivos descartados: ['B\\B1242.jpg'] (+ 2 xml sem imagem: C/C145, C/C1449)
+Split               : treino 70% / validação 15% / teste 15%
+Tipo de split       : estratificado por letra, em blocos de 20 frames consecutivos
+                      (evita vazamento entre frames quase idênticos do mesmo vídeo)
+Seed                : 42
+  train  3100 imgs : A=380, B=429, C=340, D=344, E=409, I=180, L=110, M=117, N=116, O=110, R=114, S=111, U=110, V=110, W=120
+  val     660 imgs : A=80, B=80, C=80, D=80, E=100, I=40, L=20, M=40, N=20, O=20, R=20, S=20, U=20, V=20, W=20
+  test    650 imgs : A=80, B=80, C=80, D=80, E=100, I=40, L=20, M=40, N=20, O=20, R=20, S=20, U=20, V=20, W=10
+
+======================================================================
+3. TREINO DO MODELO FINAL — libras_yolo11n_b64
+======================================================================
+Épocas executadas   : 60   |   tempo total: 15.5 min
+Melhor época (val mAP50-95): 58
+Data augmentation efetiva em detecção: mosaic, scale, translate, degrees, fliplr, hsv_h/s/v
+  (no Ultralytics, 'erasing' e 'auto_augment' só se aplicam a classificação — sem efeito aqui)
+Todos os argumentos do Ultralytics (args.yaml):
+  task              : detect
+  mode              : train
+  model             : yolo11n.pt
+  data              : datasets/libras_yolo/data.yaml
+  epochs            : 60
+  time              : None
+  patience          : 15
+  batch             : 64
+  imgsz             : 416
+  save              : True
+  save_period       : -1
+  cache             : False
+  device            : 0
+  workers           : 8
+  project           : runs
+  name              : libras_yolo11n_b64
+  exist_ok          : True
+  pretrained        : True
+  optimizer         : AdamW
+  verbose           : True
+  seed              : 42
+  deterministic     : True
+  single_cls        : False
+  rect              : False
+  cos_lr            : True
+  close_mosaic      : 10
+  resume            : False
+  amp               : True
+  fraction          : 1.0
+  profile           : False
+  freeze            : None
+  multi_scale       : False
+  overlap_mask      : True
+  mask_ratio        : 4
+  dropout           : 0.0
+  val               : True
+  split             : val
+  save_json         : False
+  conf              : None
+  iou               : 0.7
+  max_det           : 300
+  half              : False
+  dnn               : False
+  plots             : True
+  source            : None
+  vid_stride        : 1
+  stream_buffer     : False
+  visualize         : False
+  augment           : False
+  agnostic_nms      : False
+  classes           : None
+  retina_masks      : False
+  embed             : None
+  show              : False
+  save_frames       : False
+  save_txt          : False
+  save_conf         : False
+  save_crop         : False
+  show_labels       : True
+  show_conf         : True
+  show_boxes        : True
+  line_width        : None
+  format            : torchscript
+  keras             : False
+  optimize          : False
+  int8              : False
+  dynamic           : False
+  simplify          : True
+  opset             : None
+  workspace         : None
+  nms               : False
+  lr0               : 0.001
+  lrf               : 0.01
+  momentum          : 0.937
+  weight_decay      : 0.0005
+  warmup_epochs     : 3
+  warmup_momentum   : 0.8
+  warmup_bias_lr    : 0.1
+  box               : 7.5
+  cls               : 0.5
+  dfl               : 1.5
+  pose              : 12.0
+  kobj              : 1.0
+  nbs               : 64
+  hsv_h             : 0.015
+  hsv_s             : 0.6
+  hsv_v             : 0.4
+  degrees           : 10
+  translate         : 0.1
+  scale             : 0.5
+  shear             : 0.0
+  perspective       : 0.0
+  flipud            : 0.0
+  fliplr            : 0.5
+  bgr               : 0.0
+  mosaic            : 1.0
+  mixup             : 0.0
+  cutmix            : 0.0
+  copy_paste        : 0.0
+  copy_paste_mode   : flip
+  auto_augment      : randaugment
+  erasing           : 0.3
+  cfg               : None
+  tracker           : botsort.yaml
+  save_dir          : runs\libras_yolo11n_b64
+
+======================================================================
+4. TREINO DE COMPARAÇÃO — libras_yolo11n_b32
+======================================================================
+Épocas executadas   : 60   |   tempo total: 25.7 min
+Melhor época (val mAP50-95): 59
+Data augmentation efetiva em detecção: mosaic, scale, translate, degrees, fliplr, hsv_h/s/v
+  (no Ultralytics, 'erasing' e 'auto_augment' só se aplicam a classificação — sem efeito aqui)
+Todos os argumentos do Ultralytics (args.yaml):
+  task              : detect
+  mode              : train
+  model             : yolo11n.pt
+  data              : datasets/libras_yolo/data.yaml
+  epochs            : 60
+  time              : None
+  patience          : 15
+  batch             : 32
+  imgsz             : 416
+  save              : True
+  save_period       : -1
+  cache             : False
+  device            : 0
+  workers           : 8
+  project           : runs
+  name              : libras_yolo11n
+  exist_ok          : True
+  pretrained        : True
+  optimizer         : AdamW
+  verbose           : True
+  seed              : 42
+  deterministic     : True
+  single_cls        : False
+  rect              : False
+  cos_lr            : True
+  close_mosaic      : 10
+  resume            : False
+  amp               : True
+  fraction          : 1.0
+  profile           : False
+  freeze            : None
+  multi_scale       : False
+  overlap_mask      : True
+  mask_ratio        : 4
+  dropout           : 0.0
+  val               : True
+  split             : val
+  save_json         : False
+  conf              : None
+  iou               : 0.7
+  max_det           : 300
+  half              : False
+  dnn               : False
+  plots             : True
+  source            : None
+  vid_stride        : 1
+  stream_buffer     : False
+  visualize         : False
+  augment           : False
+  agnostic_nms      : False
+  classes           : None
+  retina_masks      : False
+  embed             : None
+  show              : False
+  save_frames       : False
+  save_txt          : False
+  save_conf         : False
+  save_crop         : False
+  show_labels       : True
+  show_conf         : True
+  show_boxes        : True
+  line_width        : None
+  format            : torchscript
+  keras             : False
+  optimize          : False
+  int8              : False
+  dynamic           : False
+  simplify          : True
+  opset             : None
+  workspace         : None
+  nms               : False
+  lr0               : 0.001
+  lrf               : 0.01
+  momentum          : 0.937
+  weight_decay      : 0.0005
+  warmup_epochs     : 3
+  warmup_momentum   : 0.8
+  warmup_bias_lr    : 0.1
+  box               : 7.5
+  cls               : 0.5
+  dfl               : 1.5
+  pose              : 12.0
+  kobj              : 1.0
+  nbs               : 64
+  hsv_h             : 0.015
+  hsv_s             : 0.6
+  hsv_v             : 0.4
+  degrees           : 10
+  translate         : 0.1
+  scale             : 0.5
+  shear             : 0.0
+  perspective       : 0.0
+  flipud            : 0.0
+  fliplr            : 0.5
+  bgr               : 0.0
+  mosaic            : 1.0
+  mixup             : 0.0
+  cutmix            : 0.0
+  copy_paste        : 0.0
+  copy_paste_mode   : flip
+  auto_augment      : randaugment
+  erasing           : 0.3
+  cfg               : None
+  tracker           : botsort.yaml
+  save_dir          : runs\libras_yolo11n
+
+======================================================================
+5. VALIDAÇÃO CRUZADA K-FOLD (src/kfold.py)
+======================================================================
+k                   : 5
+Dados               : treino + validação (o TESTE fica de fora e é avaliado em cada fold)
+Agrupamento         : blocos de 20 frames consecutivos nunca são separados entre folds
+Estratificação      : blocos de cada letra distribuídos entre os folds
+Tamanho dos folds   : [777, 760, 770, 707, 746]
+Épocas por fold     : 30
+Batch               : 64
+imgsz               : 416
+Modelo base         : yolo11n.pt
+Seed                : 42
+Hiperparâmetros     : mesmos do treino final (HYPERPARAMS em src/train.py):
+  seed              : 42
+  patience          : 15
+  optimizer         : AdamW
+  lr0               : 0.001
+  cos_lr            : True
+  warmup_epochs     : 3
+  mosaic            : 1.0
+  close_mosaic      : 10
+  scale             : 0.5
+  translate         : 0.1
+  degrees           : 10
+  fliplr            : 0.5
+  hsv_h             : 0.015
+  hsv_s             : 0.6
+  hsv_v             : 0.4
+Resultado (média ± desvio padrão):
+  val  : precision=0.9646±0.0342  recall=0.9690±0.0307  mAP50=0.9829±0.0129  mAP50-95=0.8918±0.0199  top1_accuracy=0.9788±0.0225
+  test : precision=0.9497±0.0246  recall=0.9730±0.0201  mAP50=0.9809±0.0129  mAP50-95=0.8852±0.0096  top1_accuracy=0.9766±0.0079
+
+======================================================================
+6. AVALIAÇÃO E PROTÓTIPO
+======================================================================
+Avaliação (src/evaluate.py): imgsz 416, conf 0.25 (top-1), IoU NMS padrão do Ultralytics (0.7)
+  métricas de detecção: precisão, recall, mAP@50, mAP@50-95 (geral e por letra)
+  métrica de classificação: acurácia top-1 (letra da detecção mais confiante)
+Tempo real (src/realtime.py): webcam 1280x720 espelhada, imgsz 416, conf 0.5,
+  modo ROI (quadrado central = 80% do menor lado), votação por maioria em 10 frames,
+  letra escrita após 1,0 s estável
+Teste libras_yolo11n_b64: precision=0.9639  recall=0.9878  mAP50=0.9950  mAP50-95=0.9168  top1_accuracy=0.9923
+Teste libras_yolo11n_b32: precision=0.9763  recall=0.9537  mAP50=0.9897  mAP50-95=0.9058  top1_accuracy=0.9785
