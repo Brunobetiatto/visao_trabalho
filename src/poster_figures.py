@@ -80,10 +80,36 @@ def fig_letters(data_root, classes, out):
     save(fig, out, "p1_letras.png")
 
 
+def fig_preprocessing(stats, out):
+    """Etapas de pré-processamento numeradas (src/prepare_dataset.py + entrada da rede)."""
+    p = stats["params"]
+    n_img = sum(sum(c.values()) for c in stats["counts"].values())
+    steps = [("Limpeza", f"3 arquivos órfãos removidos → {n_img:,} pares".replace(",", ".")),
+             ("VOC → YOLO", "caixas → (classe, xc, yc, w, h) em [0, 1]"),
+             (f"Split em blocos de {p['block']} frames",
+              f"{1 - p['val'] - p['test']:.0%} / {p['val']:.0%} / {p['test']:.0%} por letra · sem vazamento"),
+             ("Entrada 416 × 416", "letterbox + augmentation no treino")]
+    W, head, box_h, gap = 4.45, 0.36, 0.48, 0.08
+    H = head + len(steps) * box_h + (len(steps) - 1) * gap
+    fig = plt.figure(figsize=(W, H))
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.set_xlim(0, W); ax.set_ylim(0, H); ax.axis("off")
+    ax.text(0.03, H - head / 2, "Pré-processamento", va="center", **bold(12.5))
+    for i, (t, sub) in enumerate(steps):
+        y = H - head - (i + 1) * box_h - i * gap
+        ax.add_patch(FancyBboxPatch((0.03, y), W - 0.06, box_h, boxstyle="round,pad=0,rounding_size=0.08",
+                                    fc=LIGHT, ec="none"))
+        ax.add_patch(plt.Circle((0.3, y + box_h / 2), 0.15, color=WINE))
+        ax.text(0.3, y + box_h / 2, str(i + 1), ha="center", va="center", **bold(11, "white"))
+        ax.text(0.58, y + box_h * 0.68, t, va="center", **bold(11.5))
+        ax.text(0.58, y + box_h * 0.29, sub, va="center", fontsize=9.5, color="#444444")
+    save(fig, out, "p8_preprocessamento.png")
+
+
 def fig_distribution(data_root, classes, out):
     """Imagens por letra, empilhadas por split (mostra o desbalanceamento e a divisão 70/15/15)."""
     counts = json.loads((data_root / "stats.json").read_text(encoding="utf-8"))["counts"]
-    fig, ax = plt.subplots(figsize=(4.45, 3.1))
+    fig, ax = plt.subplots(figsize=(4.45, 2.45))
     x = np.arange(len(classes))
     bottom = np.zeros(len(classes))
     for split, lbl, color in (("train", "treino", PURPLE), ("val", "validação", WINE), ("test", "teste", RED)):
@@ -91,14 +117,14 @@ def fig_distribution(data_root, classes, out):
         ax.bar(x, v, 0.75, bottom=bottom, color=color, label=lbl)
         bottom += v
     for xi, total in zip(x, bottom):
-        ax.text(xi, total + 8, f"{int(total)}", ha="center", va="bottom", fontsize=7.5, color="#333333")
+        ax.text(xi, total + 8, f"{int(total)}", ha="center", va="bottom", fontsize=7, color="#333333")
     ax.set_xticks(x, classes, fontsize=11)
     ax.tick_params(axis="x", length=0)
     ax.set_ylim(0, bottom.max() * 1.12)
     ax.set_ylabel("imagens")
     ax.grid(axis="y", alpha=0.25)
-    ax.legend(frameon=False, ncol=3, fontsize=10, loc="upper right", bbox_to_anchor=(1, 1.02))
-    ax.set_title("Imagens por letra e split", loc="left", pad=14, **bold(12.5))
+    ax.legend(frameon=False, fontsize=11, loc="upper right", bbox_to_anchor=(1, 0.95))
+    ax.set_title(f"{int(bottom.sum()):,} imagens · {len(classes)} letras".replace(",", "."), loc="left", **bold(12.5))
     save(fig, out, "p2_distribuicao.png")
 
 
@@ -207,16 +233,27 @@ def fig_f1_curve(weights, data_yaml, out):
     return float(f1[i]), float(px[i])
 
 
-def fig_batch_curves(runs, out):
-    fig, ax = plt.subplots(figsize=(3.9, 2.5))
-    for run, color, lbl in zip(runs, (GRAY, RED), ("batch 32", "batch 64")):
-        df = pd.read_csv(run / "results.csv")
-        df.columns = [c.strip() for c in df.columns]
-        ax.plot(df.epoch, df["metrics/mAP50-95(B)"], color=color, lw=2.2 if "64" in lbl else 1.6, label=lbl)
-    ax.set_ylim(0.6, 0.97); ax.set_xlabel("época"); ax.set_ylabel("mAP@50-95 (val)")
-    ax.grid(alpha=0.25); ax.legend(frameon=False, loc="lower right", fontsize=11)
-    ax.set_title("Batch 32 × 64", loc="left", **bold(12.5))
-    save(fig, out, "p6_curvas_batch.png")
+def fig_f1_per_class(kdir, classes, out):
+    """F1 de cada letra na validação dos k folds: média (barra) e cada fold (pontos)."""
+    folds = [json.loads(p.read_text(encoding="utf-8")) for p in sorted(kdir.glob("fold*/fold_metrics.json"))]
+    f1 = np.array([[2 * f["val"]["per_class"][c]["P"] * f["val"]["per_class"][c]["R"]
+                    / max(f["val"]["per_class"][c]["P"] + f["val"]["per_class"][c]["R"], 1e-9)
+                    for c in classes] for f in folds]) * 100
+    mean = f1.mean(0)
+    x = np.arange(len(classes))
+    fig, ax = plt.subplots(figsize=(3.3, 2.25))
+    ax.bar(x, mean, 0.72, color=[RED if m < 95 else PURPLE for m in mean])
+    for row in f1:
+        ax.scatter(x, row, s=7, color="#222222", zorder=3, linewidths=0)
+    lo = np.floor(f1.min() / 10) * 10
+    ax.set_ylim(lo, 102); ax.set_yticks(np.arange(lo, 101, 10))
+    ax.set_xticks(x, classes)
+    ax.set_ylabel("F1 (%)")
+    ax.tick_params(axis="x", length=0, labelsize=9.5, pad=2)
+    ax.tick_params(axis="y", labelsize=11)
+    ax.grid(axis="y", alpha=0.25)
+    ax.set_title("F1 por letra · ponto = fold", loc="left", **bold(12))
+    save(fig, out, "p6_f1_por_letra.png")
 
 
 def fig_losses(run, out):
@@ -259,7 +296,6 @@ def main():
     ap.add_argument("--font-dir", default=None)
     ap.add_argument("--data", default="datasets/libras_yolo")
     ap.add_argument("--final", default="runs/libras_yolo11n_b64")
-    ap.add_argument("--compare", default="runs/libras_yolo11n_b32")
     ap.add_argument("--kfold", default="runs/kfold")
     ap.add_argument("--out", default="relatorio/poster")
     args = ap.parse_args()
@@ -274,10 +310,11 @@ def main():
     print("figuras do pôster em", out)
     fig_letters(data_root, classes, out)
     fig_distribution(data_root, classes, out)
+    fig_preprocessing(json.loads((data_root / "stats.json").read_text(encoding="utf-8")), out)
     total = fig_architecture(weights, out)
     fig_confusion(kdir, classes, out)
     f1_best = fig_f1_curve(weights, data_yaml, out)
-    fig_batch_curves([Path(args.compare), final], out)
+    fig_f1_per_class(kdir, classes, out)
     fig_losses(final, out)
     table = metrics_table(final, kdir, f1_best)
     table["_params_M"] = total
